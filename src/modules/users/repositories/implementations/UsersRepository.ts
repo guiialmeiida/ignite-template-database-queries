@@ -11,23 +11,28 @@ export class UsersRepository implements IUsersRepository {
     this.repository = getRepository(User);
   }
 
-  async findUserWithGamesById(data: IFindUserWithGamesDTO): Promise<User> {
-    return await this.repository.findOneOrFail(data.user_id, {
-      relations: ['games']
-    })
+  async findUserWithGamesById({
+    user_id,
+  }: IFindUserWithGamesDTO): Promise<User> {
+    const id = user_id
+    const user = await this.repository.createQueryBuilder("users")
+      .leftJoinAndSelect("users.games", "games")
+      .where("users.id = :id", { id: `${user_id}` })
+      .getOne()
+
+    if (!user) throw new Error("User don't exists");
+
+    return user;
   }
 
   async findAllUsersOrderedByFirstName(): Promise<User[]> {
-    return await this.repository.query('SELECT * FROM USERS ORDER BY first_name ASC');
+    return await this.repository.query("SELECT * FROM users ORDER BY first_name ASC"); // Complete usando raw query
   }
 
   async findUserByFullName({
     first_name,
     last_name,
   }: IFindUserByFullNameDTO): Promise<User[] | undefined> {
-    return await this.repository.query('SELECT * FROM USERS WHERE first_name ILike $1 AND last_name ILike $2', [
-      `%${first_name}%`,
-      `%${last_name}%`,
-    ]);
+    return await this.repository.query(`SELECT * FROM users WHERE LOWER(first_name) = LOWER('${first_name}') OR LOWER(last_name) = LOWER('${last_name}')`); // Complete usando raw query
   }
 }
